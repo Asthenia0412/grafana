@@ -269,7 +269,9 @@ export function setDashboardPanelContext(vizPanel: VizPanel, context: PanelConte
         takeUntil(timer(ASSISTANT_AVAILABILITY_TIMEOUT_MS))
       )
       .subscribe((available) => {
-        context.onInvestigateErrors = available ? () => investigatePanelErrorsWithAssistant(vizPanel) : undefined;
+        context.onInvestigateErrors = available
+          ? () => investigatePanelErrorsWithAssistant(vizPanel, undefined, context)
+          : undefined;
         context.onInvestigateStatusItem = available
           ? (id) => investigatePanelErrorsWithAssistant(vizPanel, id, context)
           : undefined;
@@ -291,11 +293,14 @@ function investigatePanelErrorsWithAssistant(vizPanel: VizPanel, statusItemId?: 
   const panelData = sceneGraph.getData(vizPanel).state.data;
   const errors = panelData?.errors ?? (panelData?.error ? [panelData.error] : []);
   const entries = buildEntries(panelData?.series, errors);
-  const statusItem = statusItemId
-    ? context?.notices?.getSnapshot().items.find((item) => item.id === statusItemId)
-    : undefined;
+  const snapshot = context?.notices?.getSnapshot();
+  const statusItems = snapshot?.items.filter((item) => item.assistant !== 'hidden') ?? [];
+  const statusItem = statusItemId ? snapshot?.items.find((item) => item.id === statusItemId) : undefined;
+  const hasFallbackEntries = !snapshot?.hostInitialized && entries.length > 0;
 
-  if (statusItemId ? !statusItem || statusItem.assistant === 'hidden' : entries.length === 0) {
+  if (
+    statusItemId ? !statusItem || statusItem.assistant === 'hidden' : statusItems.length === 0 && !hasFallbackEntries
+  ) {
     return;
   }
 
@@ -303,7 +308,10 @@ function investigatePanelErrorsWithAssistant(vizPanel: VizPanel, statusItemId?: 
   // LLM), so the fallback stays in English like the prompt does.
   const panelTitle = vizPanel.interpolate(vizPanel.state.title, undefined, 'text') || 'Untitled';
   const panelKey = vizPanel.state.key;
-  const hasError = statusItem ? statusItem.severity === 'error' : entries.some((entry) => entry.severity === 'error');
+  const hasError = statusItem
+    ? statusItem.severity === 'error'
+    : statusItems.some((item) => item.severity === 'error') ||
+      (hasFallbackEntries && entries.some((entry) => entry.severity === 'error'));
   // Prompt text sent to the assistant is intentionally not translated (matching
   // QueryErrorAlert.tsx/AnalyzeRuleButton.tsx): it's an instruction to the LLM, not rendered
   // UI copy, so it stays in English regardless of UI locale.
@@ -312,8 +320,12 @@ function investigatePanelErrorsWithAssistant(vizPanel: VizPanel, statusItemId?: 
       ? 'Investigate and fix the selected error or notice for this panel.'
       : 'Explain the selected error or notice for this panel and what I should do about it.'
     : hasError
-      ? 'Investigate and fix the query errors causing this panel to fail.'
-      : 'Investigate the query notices for this panel and explain what they mean and what I should do about them.';
+      ? statusItems.length > 0
+        ? 'Investigate and fix the errors or notices reported for this panel.'
+        : 'Investigate and fix the query errors causing this panel to fail.'
+      : statusItems.length > 0
+        ? 'Investigate the notices reported for this panel and explain what they mean and what I should do about them.'
+        : 'Investigate the query notices for this panel and explain what they mean and what I should do about them.';
 
   openAssistant({
     origin: 'grafana/panel-status-popover',
@@ -342,7 +354,17 @@ function investigatePanelErrorsWithAssistant(vizPanel: VizPanel, statusItemId?: 
                   datasourceUid: statusItem.datasourceUid,
                 },
               }
-            : {}),
+            : statusItems.length > 0
+              ? {
+                  statusItems: statusItems.map(({ severity, text, origin, refId, datasourceUid }) => ({
+                    severity,
+                    text,
+                    origin,
+                    refId,
+                    datasourceUid,
+                  })),
+                }
+              : {}),
         },
       }),
     ],

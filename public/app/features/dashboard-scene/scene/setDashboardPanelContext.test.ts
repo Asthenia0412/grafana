@@ -953,6 +953,50 @@ describe('setDashboardPanelContext', () => {
       expect(mockOpenAssistant).toHaveBeenCalledTimes(1);
     });
 
+    it('sends eligible panel notices through the aggregate action and excludes opted-out notices', () => {
+      mockIsAssistantAvailable.mockReturnValue(of(true));
+      const { context } = buildTestScene({});
+      const source = context.notices!.createSource();
+      source.set([
+        { id: 'field', severity: 'warning', text: 'Choose a numeric field' },
+        { id: 'secret', severity: 'error', text: 'Manual repair required', assistant: 'hidden' },
+      ]);
+
+      context.onInvestigateErrors?.();
+
+      expect(mockCreateAssistantContextItem).toHaveBeenCalledWith('structured', {
+        data: expect.objectContaining({
+          statusItems: [
+            {
+              severity: 'warning',
+              text: 'Choose a numeric field',
+              origin: 'panel',
+              refId: undefined,
+              datasourceUid: undefined,
+            },
+          ],
+        }),
+      });
+      expect(mockOpenAssistant).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt:
+            'Investigate the notices reported for this panel and explain what they mean and what I should do about them.',
+        })
+      );
+    });
+
+    it('does not run the aggregate action when every runtime notice opts out', () => {
+      mockIsAssistantAvailable.mockReturnValue(of(true));
+      const { context } = buildTestScene({});
+      context
+        .notices!.createSource()
+        .set([{ id: 'secret', severity: 'error', text: 'Manual repair required', assistant: 'hidden' }]);
+
+      context.onInvestigateErrors?.();
+
+      expect(mockOpenAssistant).not.toHaveBeenCalled();
+    });
+
     it('does nothing when the panel currently has no errors or notices', async () => {
       mockIsAssistantAvailable.mockReturnValue(of(true));
 

@@ -46,8 +46,13 @@ function getSeverityIcon(severity: PanelStatusSeverity): IconName {
 export function PanelStatus({ message, items, onClick, ariaLabel = 'status' }: Props) {
   const { onOpenInspector, onInvestigateErrors, notices } = usePanelContext();
   const snapshot = usePanelStatusSnapshot(notices);
+  let canInvestigateErrors = Boolean(onInvestigateErrors);
   if (notices) {
     const fallback = items?.length ? items : message ? [{ severity: 'error' as const, text: message }] : [];
+    canInvestigateErrors =
+      canInvestigateErrors &&
+      ((!snapshot.hostInitialized && fallback.length > 0) ||
+        snapshot.items.some((item) => item.assistant !== 'hidden'));
     items = snapshot.hostInitialized ? [...snapshot.items] : [...fallback, ...snapshot.items];
     if (snapshot.hostInitialized) {
       message = undefined;
@@ -69,7 +74,7 @@ export function PanelStatus({ message, items, onClick, ariaLabel = 'status' }: P
         items={items}
         onInspect={canInspect ? handleInspectClick : undefined}
         ariaLabel={ariaLabel}
-        onInvestigateErrors={onInvestigateErrors}
+        onInvestigateErrors={canInvestigateErrors ? onInvestigateErrors : undefined}
       />
     );
   }
