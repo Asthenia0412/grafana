@@ -295,6 +295,8 @@ function investigatePanelErrorsWithAssistant(vizPanel: VizPanel, statusItemId?: 
   const entries = buildEntries(panelData?.series, errors);
   const snapshot = context?.notices?.getSnapshot();
   const statusItems = snapshot?.items.filter((item) => item.assistant !== 'hidden') ?? [];
+  const runtimeStatusItems = statusItems.filter((item) => item.origin === 'panel' || item.origin === 'plugin-load');
+  const hasQueryStatusItems = statusItems.some((item) => item.origin === 'query' || item.origin === 'notice');
   const statusItem = statusItemId ? snapshot?.items.find((item) => item.id === statusItemId) : undefined;
   const hasFallbackEntries = !snapshot?.hostInitialized && entries.length > 0;
 
@@ -312,6 +314,7 @@ function investigatePanelErrorsWithAssistant(vizPanel: VizPanel, statusItemId?: 
     ? statusItem.severity === 'error'
     : statusItems.some((item) => item.severity === 'error') ||
       (hasFallbackEntries && entries.some((entry) => entry.severity === 'error'));
+  const hasQueryEntries = hasQueryStatusItems || hasFallbackEntries;
   // Prompt text sent to the assistant is intentionally not translated (matching
   // QueryErrorAlert.tsx/AnalyzeRuleButton.tsx): it's an instruction to the LLM, not rendered
   // UI copy, so it stays in English regardless of UI locale.
@@ -320,12 +323,14 @@ function investigatePanelErrorsWithAssistant(vizPanel: VizPanel, statusItemId?: 
       ? 'Investigate and fix the selected error or notice for this panel.'
       : 'Explain the selected error or notice for this panel and what I should do about it.'
     : hasError
-      ? statusItems.length > 0
+      ? runtimeStatusItems.length > 0
         ? 'Investigate and fix the errors or notices reported for this panel.'
         : 'Investigate and fix the query errors causing this panel to fail.'
-      : statusItems.length > 0
+      : runtimeStatusItems.length > 0
         ? 'Investigate the notices reported for this panel and explain what they mean and what I should do about them.'
-        : 'Investigate the query notices for this panel and explain what they mean and what I should do about them.';
+        : hasQueryEntries
+          ? 'Investigate the query notices for this panel and explain what they mean and what I should do about them.'
+          : 'Explain the notices reported for this panel and what I should do about them.';
 
   openAssistant({
     origin: 'grafana/panel-status-popover',
@@ -354,9 +359,9 @@ function investigatePanelErrorsWithAssistant(vizPanel: VizPanel, statusItemId?: 
                   datasourceUid: statusItem.datasourceUid,
                 },
               }
-            : statusItems.length > 0
+            : runtimeStatusItems.length > 0
               ? {
-                  statusItems: statusItems.map(({ severity, text, origin, refId, datasourceUid }) => ({
+                  statusItems: runtimeStatusItems.map(({ severity, text, origin, refId, datasourceUid }) => ({
                     severity,
                     text,
                     origin,

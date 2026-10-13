@@ -266,6 +266,21 @@ describe('PanelStatus', () => {
       expect(screen.queryByRole('button', { name: /with Assistant$/ })).not.toBeInTheDocument();
     });
 
+    it('labels the panel-level Assistant action from eligible runtime items', async () => {
+      const notices = new PanelStatusStore();
+      notices.createSource().set([
+        { id: 'manual', severity: 'error', text: 'Manual repair required', assistant: 'hidden' },
+        { id: 'slow', severity: 'warning', text: 'Slow query' },
+      ]);
+      renderWithPanelContext(<PanelStatus />, { notices, onInvestigateErrors: jest.fn() });
+
+      await userEvent.click(screen.getByTestId(selectors.components.Panels.Panel.status('error')));
+
+      expect(await screen.findByText('Manual repair required')).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Explain with Assistant' })).toBeVisible();
+      expect(screen.queryByRole('button', { name: 'Fix with Assistant' })).not.toBeInTheDocument();
+    });
+
     it('traps focus within the popover and returns it to the trigger on Escape', async () => {
       // The portaled popover content sits elsewhere in the DOM than the trigger, so this only
       // reproduces the real page's Tab order if there's another focusable element right after the

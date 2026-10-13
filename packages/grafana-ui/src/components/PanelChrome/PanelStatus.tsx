@@ -46,13 +46,13 @@ function getSeverityIcon(severity: PanelStatusSeverity): IconName {
 export function PanelStatus({ message, items, onClick, ariaLabel = 'status' }: Props) {
   const { onOpenInspector, onInvestigateErrors, notices } = usePanelContext();
   const snapshot = usePanelStatusSnapshot(notices);
-  let canInvestigateErrors = Boolean(onInvestigateErrors);
+  let assistantItems = items?.length ? items : message ? [{ severity: 'error' as const, text: message }] : [];
   if (notices) {
-    const fallback = items?.length ? items : message ? [{ severity: 'error' as const, text: message }] : [];
-    canInvestigateErrors =
-      canInvestigateErrors &&
-      ((!snapshot.hostInitialized && fallback.length > 0) ||
-        snapshot.items.some((item) => item.assistant !== 'hidden'));
+    const fallback = assistantItems;
+    assistantItems = [
+      ...(!snapshot.hostInitialized ? fallback : []),
+      ...snapshot.items.filter((item) => item.assistant !== 'hidden'),
+    ];
     items = snapshot.hostInitialized ? [...snapshot.items] : [...fallback, ...snapshot.items];
     if (snapshot.hostInitialized) {
       message = undefined;
@@ -61,6 +61,8 @@ export function PanelStatus({ message, items, onClick, ariaLabel = 'status' }: P
       }
     }
   }
+  const assistantSeverity =
+    onInvestigateErrors && assistantItems.length > 0 ? getTopSeverity(assistantItems) : undefined;
   const canInspect = Boolean(onClick) || Boolean(onOpenInspector);
 
   const handleInspectClick = (e: React.SyntheticEvent) => {
@@ -74,7 +76,8 @@ export function PanelStatus({ message, items, onClick, ariaLabel = 'status' }: P
         items={items}
         onInspect={canInspect ? handleInspectClick : undefined}
         ariaLabel={ariaLabel}
-        onInvestigateErrors={canInvestigateErrors ? onInvestigateErrors : undefined}
+        onInvestigateErrors={assistantSeverity ? onInvestigateErrors : undefined}
+        assistantSeverity={assistantSeverity}
       />
     );
   }
@@ -97,9 +100,16 @@ interface PanelStatusPopoverProps {
   onInspect?: (e: React.SyntheticEvent) => void;
   ariaLabel: string;
   onInvestigateErrors?: () => void;
+  assistantSeverity?: PanelStatusSeverity;
 }
 
-function PanelStatusPopover({ items, onInspect, ariaLabel, onInvestigateErrors }: PanelStatusPopoverProps) {
+function PanelStatusPopover({
+  items,
+  onInspect,
+  ariaLabel,
+  onInvestigateErrors,
+  assistantSeverity,
+}: PanelStatusPopoverProps) {
   const styles = useStyles2(getStyles);
   const [isOpen, setIsOpen] = React.useState(false);
   const topSeverity = getTopSeverity(items);
@@ -123,7 +133,7 @@ function PanelStatusPopover({ items, onInspect, ariaLabel, onInvestigateErrors }
       <Stack direction="row" justifyContent="space-between" alignItems="center" width="100%">
         {onInvestigateErrors ? (
           <Button size="sm" variant="secondary" fill="text" icon="ai-sparkle" onClick={onInvestigateErrors}>
-            {topSeverity === 'error'
+            {assistantSeverity === 'error'
               ? t('grafana-ui.panel-chrome.fix-with-assistant', 'Fix with Assistant')
               : t('grafana-ui.panel-chrome.explain-with-assistant', 'Explain with Assistant')}
           </Button>
