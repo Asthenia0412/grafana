@@ -44,7 +44,7 @@ function getSeverityIcon(severity: PanelStatusSeverity): IconName {
 }
 
 export function PanelStatus({ message, items, onClick, ariaLabel = 'status' }: Props) {
-  const { onOpenInspector, notices } = usePanelContext();
+  const { onOpenInspector, onInvestigateErrors, notices } = usePanelContext();
   const snapshot = usePanelStatusSnapshot(notices);
   if (notices) {
     const fallback = items?.length ? items : message ? [{ severity: 'error' as const, text: message }] : [];
@@ -65,7 +65,12 @@ export function PanelStatus({ message, items, onClick, ariaLabel = 'status' }: P
 
   if (items && items.length > 0) {
     return (
-      <PanelStatusPopover items={items} onInspect={canInspect ? handleInspectClick : undefined} ariaLabel={ariaLabel} />
+      <PanelStatusPopover
+        items={items}
+        onInspect={canInspect ? handleInspectClick : undefined}
+        ariaLabel={ariaLabel}
+        onInvestigateErrors={onInvestigateErrors}
+      />
     );
   }
 
@@ -86,9 +91,10 @@ interface PanelStatusPopoverProps {
   items: PanelStatusItem[];
   onInspect?: (e: React.SyntheticEvent) => void;
   ariaLabel: string;
+  onInvestigateErrors?: () => void;
 }
 
-function PanelStatusPopover({ items, onInspect, ariaLabel }: PanelStatusPopoverProps) {
+function PanelStatusPopover({ items, onInspect, ariaLabel, onInvestigateErrors }: PanelStatusPopoverProps) {
   const styles = useStyles2(getStyles);
   const [isOpen, setIsOpen] = React.useState(false);
   const topSeverity = getTopSeverity(items);
@@ -107,21 +113,36 @@ function PanelStatusPopover({ items, onInspect, ariaLabel }: PanelStatusPopoverP
     </Stack>
   );
 
-  const footer = onInspect ? (
-    <Stack direction="row" justifyContent="flex-end" width="100%">
-      <Button
-        size="sm"
-        variant="secondary"
-        icon="arrow-right"
-        onClick={(event) => {
-          setIsOpen(false);
-          onInspect(event);
-        }}
-      >
-        {t('grafana-ui.panel-chrome.inspect', 'Inspect')}
-      </Button>
-    </Stack>
-  ) : undefined;
+  const footer =
+    onInvestigateErrors || onInspect ? (
+      <Stack direction="row" justifyContent="space-between" alignItems="center" width="100%">
+        {onInvestigateErrors ? (
+          <Button size="sm" variant="secondary" fill="text" icon="ai-sparkle" onClick={onInvestigateErrors}>
+            {topSeverity === 'error'
+              ? t('grafana-ui.panel-chrome.fix-with-assistant', 'Fix with Assistant')
+              : t('grafana-ui.panel-chrome.explain-with-assistant', 'Explain with Assistant')}
+          </Button>
+        ) : (
+          <span />
+        )}
+        {onInspect ? (
+          <Button
+            size="sm"
+            variant="secondary"
+            fill="text"
+            icon="arrow-right"
+            onClick={(event) => {
+              setIsOpen(false);
+              onInspect(event);
+            }}
+          >
+            {t('grafana-ui.panel-chrome.inspect', 'Inspect')}
+          </Button>
+        ) : (
+          <span />
+        )}
+      </Stack>
+    ) : undefined;
 
   return (
     <Toggletip

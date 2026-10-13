@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 
-import { getPanelDataStatusItems, type DataSourceApi } from '@grafana/data';
+import { type DataSourceApi } from '@grafana/data';
+import { getPanelDataStatusItems } from '@grafana/data/internal';
 import { t } from '@grafana/i18n';
 import {
   type SceneComponentProps,
@@ -45,6 +46,9 @@ function InspectErrorsAndNoticesTabRenderer({ model }: SceneComponentProps<Inspe
   const errors = panelData?.errors ?? (panelData?.error ? [panelData.error] : []);
 
   const CustomInspector = dataSource?.components?.ErrorsAndNoticesInspector;
+  if (CustomInspector) {
+    return panelData ? <CustomInspector datasource={dataSource} data={panelData.series} errors={errors} /> : null;
+  }
   if (context.notices) {
     return (
       <PanelContextProvider value={context}>
@@ -55,16 +59,11 @@ function InspectErrorsAndNoticesTabRenderer({ model }: SceneComponentProps<Inspe
               : [...getPanelDataStatusItems(panelData, panel.state._pluginLoadError), ...snapshot.items]
           }
         />
-        {CustomInspector && <CustomInspector datasource={dataSource} data={panelData?.series ?? []} errors={errors} />}
       </PanelContextProvider>
     );
   }
   if (!panelData) {
     return null;
   }
-  return CustomInspector ? (
-    <CustomInspector datasource={dataSource} data={panelData.series} errors={errors} />
-  ) : (
-    <StandardErrorsAndNoticesInspector data={panelData.series} errors={errors} />
-  );
+  return <StandardErrorsAndNoticesInspector data={panelData.series} errors={errors} />;
 }

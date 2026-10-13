@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 
-import { DataSourceApi, EventBusSrv, getDefaultTimeRange, LoadingState, PanelStatusStore } from '@grafana/data';
+import { DataSourceApi, EventBusSrv, getDefaultTimeRange, LoadingState } from '@grafana/data';
+import { PanelStatusStore } from '@grafana/data/internal';
 import { SceneDataNode, VizPanel } from '@grafana/scenes';
 import type { PanelContext } from '@grafana/ui';
 
@@ -43,7 +43,7 @@ it('shows query errors before host initialization and respects an initialized em
   expect(screen.queryByText('Query failed')).not.toBeInTheDocument();
 });
 
-it('shows plugin-only notices and callback actions alongside a custom inspector, then updates live', async () => {
+it('uses a custom inspector instead of standard panel notices', () => {
   const store = new PanelStatusStore();
   const source = store.createSource();
   const onClick = jest.fn();
@@ -78,18 +78,9 @@ it('shows plugin-only notices and callback actions alongside a custom inspector,
   });
   const tab = new InspectErrorsAndNoticesTab({ panelRef: panel.getRef(), dataSource: datasource });
   render(<tab.Component model={tab} />);
-  expect(screen.getByText('Choose a numeric field')).toBeVisible();
   expect(screen.getByText('Datasource details')).toBeVisible();
-  await userEvent.click(screen.getByRole('button', { name: 'Choose field' }));
-  expect(onClick).toHaveBeenCalledTimes(1);
-  await userEvent.click(screen.getByRole('button', { name: 'Explain with Assistant' }));
-  expect(onInvestigateStatusItem).toHaveBeenCalledWith(store.getSnapshot().items[0].id);
-  act(() => source.set([{ id: 'field', severity: 'error', text: 'Field removed' }]));
-  expect(screen.getByText('Field removed')).toBeVisible();
-  await userEvent.click(screen.getByRole('button', { name: 'Fix with Assistant' }));
-  expect(onInvestigateStatusItem).toHaveBeenCalledTimes(2);
   expect(screen.queryByText('Choose a numeric field')).not.toBeInTheDocument();
-  act(() => source.set([]));
-  expect(screen.getByText('No errors or notices for this panel.')).toBeVisible();
-  expect(screen.getByText('Datasource details')).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'Choose field' })).not.toBeInTheDocument();
+  expect(onClick).not.toHaveBeenCalled();
+  expect(onInvestigateStatusItem).not.toHaveBeenCalled();
 });

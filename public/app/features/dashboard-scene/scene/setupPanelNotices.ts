@@ -1,15 +1,8 @@
 import { isEqual } from 'lodash';
 
-import {
-  getPanelDataStatusItems,
-  PanelStatusStore,
-  type ScopedVars,
-  type PanelData,
-  type DataSourceApi,
-  type PanelStatusActionResolver,
-} from '@grafana/data';
-import { getTemplateSrv } from '@grafana/runtime';
-import { getDataSourceInstance } from '@grafana/runtime/unstable';
+import { type ScopedVars, type PanelData, type DataSourceApi, type PanelStatusActionResolver } from '@grafana/data';
+import { getPanelDataStatusItems, PanelStatusStore } from '@grafana/data/internal';
+import { getDataSourceInstance, getTemplateSrv } from '@grafana/runtime';
 import { sceneGraph, type SceneDataProvider, type VizPanel } from '@grafana/scenes';
 import type { PanelContext } from '@grafana/ui';
 

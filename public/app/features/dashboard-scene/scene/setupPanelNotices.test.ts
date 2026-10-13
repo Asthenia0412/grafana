@@ -7,8 +7,7 @@ import {
   type PanelData,
   type PanelStatusItem,
 } from '@grafana/data';
-import { getTemplateSrv, setTemplateSrv } from '@grafana/runtime';
-import { getDataSourceInstance } from '@grafana/runtime/unstable';
+import { getDataSourceInstance, getTemplateSrv, setTemplateSrv } from '@grafana/runtime';
 import { SceneDataNode, VizPanel } from '@grafana/scenes';
 import type { PanelContext } from '@grafana/ui';
 
@@ -16,8 +15,8 @@ import { initTemplateSrv } from '../../../../test/helpers/initTemplateSrv';
 
 import { setupPanelNotices } from './setupPanelNotices';
 
-jest.mock('@grafana/runtime/unstable', () => ({
-  ...jest.requireActual('@grafana/runtime/unstable'),
+jest.mock('@grafana/runtime', () => ({
+  ...jest.requireActual('@grafana/runtime'),
   getDataSourceInstance: jest.fn(),
 }));
 

@@ -2,7 +2,10 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 
-import { createTheme, EventBusSrv, PanelStatusStore, ThemeContext, type PanelNotice } from '@grafana/data';
+import { createTheme, EventBusSrv, ThemeContext, type PanelNotice } from '@grafana/data';
+// Tests exercise host integration against Grafana's internal store without making it public package API.
+// eslint-disable-next-line no-restricted-imports
+import { PanelStatusStore } from '@grafana/data/internal';
 import { selectors } from '@grafana/e2e-selectors';
 
 import { PanelChrome } from './PanelChrome';

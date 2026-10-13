@@ -4,7 +4,10 @@ import { type CSSProperties, useMemo, useState, type ReactNode } from 'react';
 import { useInterval, useToggle } from 'react-use';
 import { action } from 'storybook/actions';
 
-import { EventBusSrv, LoadingState, PanelStatusStore, type PanelNotice } from '@grafana/data';
+import { EventBusSrv, LoadingState, type PanelNotice } from '@grafana/data';
+// Storybook-only host setup exercises Grafana's internal status store without exposing it as plugin API.
+// eslint-disable-next-line no-restricted-imports
+import { PanelStatusStore } from '@grafana/data/internal';
 
 import { DashboardStoryCanvas } from '../../utils/storybook/DashboardStoryCanvas';
 import { Button } from '../Button/Button';
